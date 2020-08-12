@@ -1,1 +1,193 @@
 
+def mvnCmd = "mvn -s configuration/cicd-settings-nexus3.xml"
+pipeline {
+    agent {
+        label 'maven'
+    }
+    stages {
+        stage('Setup Projects') {
+            steps {
+                sh ""
+                script {
+                    echo "SETTING UP DEMO STAGING PROJECTS : OPTIONAL"
+                    openshift.withCluster() {
+                        openshift.withProject('cicd') {
+                            def projects = ["${DEV_PROJECT}", "${STAGE_PROJECT}", "${PROD_PROJECT}"]
+                            
+                            for (project in projects) {
+                                if (!openshift.selector("project", project).exists()) {
+                                     openshift.create("project", project)
+                                        echo "##########################################################"
+                                        echo "NEW PROJECT: ${project} CREATED"
+                                        echo "##########################################################"
+                                } else {
+                                    openshift.withProject(project) {
+                                        echo "##########################################################"
+                                        echo "PROJECT: ${project} ALREADY EXISTS - CLEARING RESOURCES"
+                                        echo "##########################################################"
+                                        openshift.selector("all", ["app": "tasks"]).delete()
+                                        openshift.selector("all", ["application": "tasks"]).delete()
+                                    }
+                                }
+                            }
+                        }
+                    }   
+                }
+            }
+        }
+        stage('Create Project Apps') {
+            steps {
+                script {
+                    openshift.withCluster(){
+                        def wildfly = openshift.selector("is", "wildfly")
+                        def stageTemplate
+                        def tag
+                        
+                        if(!wildfly.exists()) {
+                            wildfly = openshift.raw("import-image", "wildfly", "--from=openshift/wildfly-120-centos7", "--confirm", "-n", "${DEV_PROJECT}")
+                        }
+                        
+                        
+                        openshift.withProject("${DEV_PROJECT}"){
+                            echo "##########################################################"
+                            echo "CREATING ${APP_NAME} in ${openshift.project()}"
+                            echo "##########################################################"
+
+                            //  using templates
+                            openshift.newApp("--name=${APP_NAME}", "https://raw.githubusercontent.com/jstrickl-redhat/openshift-tasks/master/app-template.yaml", "-n", "${DEV_PROJECT}")
+                            openshift.set("triggers", "dc", "tasks", "--remove-all")
+                            openshift.set("triggers", "dc", "-l", "app=tasks", "--containers=tasks", "--from-image=tasks:latest", "--manual")
+                        }
+                        openshift.withProject("${STAGE_PROJECT}"){
+                            echo "##########################################################"
+                            echo "CREATING ${APP_NAME} in ${openshift.project()}"
+                            echo "##########################################################"
+                            
+                            if(openshift.selector("dc", "tasks").exists()) { openshift.selector("dc", "tasks").delete() }
+                            if(openshift.selector("svc", "tasks").exists()) { openshift.selector("svc", "tasks").delete() }
+                            if(openshift.selector("is", "tasks").exists()) { openshift.selector("is", "tasks").delete() }
+                            
+                            
+                            if(!openshift.selector("template", [template: "openshift-tasks"]).exists()){
+                                openshift.create(openshift.process("https://raw.githubusercontent.com/jstrickl-redhat/cicd-demo/master/apps/java/openshift-tasks-deploy.yaml", "-p", "APPLICATION_NAME=${APP_NAME}", "-p", "TAG=stage", "-p", "NAMESPACE=stage"))
+                            }
+                          
+                            openshift.set("triggers", "dc", "-l", "app=tasks", "--containers=tasks", "--from-image=tasks:stage", "--manual")
+                        }
+                        openshift.withProject("${PROD_PROJECT}"){
+                            echo "##########################################################"
+                            echo "CREATING ${APP_NAME} in ${openshift.project()}"
+                            echo "##########################################################"
+                            
+                            if(openshift.selector("dc", "tasks").exists()) { openshift.selector("dc", "tasks").delete() }
+                            if(openshift.selector("svc", "tasks").exists()) { openshift.selector("svc", "tasks").delete() }
+                            if(openshift.selector("is", "tasks").exists()) { openshift.selector("is", "tasks").delete() }
+                            
+                            
+                            if(!openshift.selector("template", [template: "openshift-tasks"]).exists()){
+                                openshift.create(openshift.process("https://raw.githubusercontent.com/jstrickl-redhat/cicd-demo/master/apps/java/openshift-tasks-deploy.yaml", "-p", "APPLICATION_NAME=${APP_NAME}", "-p", "TAG=prod", "-p", "NAMESPACE=prod"))
+                            }
+                          
+                            openshift.set("triggers", "dc", "-l", "app=tasks", "--containers=tasks", "--from-image=tasks:prod", "--manual")
+                        }
+                    }
+                }
+            }
+        }
+        stage('Build App') {
+            steps {
+                git branch: "${APP_BRANCH}", url: "${APP_REPO}"
+                sh "${mvnCmd} install -DskipTests=true"
+            }
+        }
+        stage('Test') {
+            steps {
+                sh "${mvnCmd} test"
+                step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*.xml'])
+            }
+        }
+        stage('Code Analysis') {
+            steps {
+                script {
+                    openshift.withCluster() {
+                        openshift.withProject(env.DEV_PROJECT) {
+                            sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube:9000 -DskipTests=true"
+                        }
+                    }
+                }
+            }
+        }
+        stage('Archive App') {
+            steps {
+                sh "${mvnCmd} deploy -DskipTests=true -P nexus"
+            }
+        }
+        stage('Build Image') {
+            steps {
+                sh "cp target/openshift-tasks.war target/ROOT.war"
+                script {
+                    openshift.withCluster() {
+                        openshift.withProject(env.DEV_PROJECT) {
+                            openshift.selector("bc", "tasks").startBuild("--from-file=target/ROOT.war", "--wait=true")
+                        }
+                    }
+                }
+            }
+        }
+        stage('Deploy DEV') {
+            steps {
+                script {
+                    openshift.withCluster() {
+                        openshift.withProject(env.DEV_PROJECT) {
+                            openshift.selector("dc", "${APP_NAME}").rollout().latest();
+                            openshift.tag("dev/tasks:latest", "stage/tasks:stage")
+                        }
+                    }
+                }
+            }
+        }
+        stage('Promote to STAGE?') {
+            steps {
+                timeout(time:15, unit:'MINUTES') {
+                    input message: "Promote to STAGE?", ok: "Promote"
+                }
+            }
+        }
+        stage('Deploy STAGE') {
+            steps {
+                script {
+                    openshift.withCluster() {
+                        openshift.withProject(env.STAGE_PROJECT) {
+                            openshift.selector("dc", "tasks").rollout().latest()
+                            if(!openshift.selector("route", "tasks").exists()){
+                                openshift.selector("svc", "tasks").expose()
+                            }
+                            openshift.tag("stage/tasks:stage", "prod/tasks:prod")
+                        }
+                    }
+                }
+            }
+        }
+        stage('Promote to Prod?') {
+            steps {
+                timeout(time:15, unit:'MINUTES') {
+                    input message: "Promote to PROD?", ok: "Promote"
+                }
+            }
+        }
+        stage('Deploy Prod') {
+            steps {
+                script {
+                    openshift.withCluster() {
+                        openshift.withProject(env.PROD_PROJECT) {
+                            openshift.selector("dc", "tasks").rollout().latest()
+                            if(!openshift.selector("route", "tasks").exists()){
+                                openshift.selector("svc", "tasks").expose()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
