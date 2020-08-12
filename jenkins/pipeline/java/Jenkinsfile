@@ -40,8 +40,6 @@ pipeline {
                 script {
                     openshift.withCluster(){
                         def wildfly = openshift.selector("is", "wildfly")
-                        def stageTemplate
-                        def tag
                         
                         if(!wildfly.exists()) {
                             wildfly = openshift.raw("import-image", "wildfly", "--from=openshift/wildfly-120-centos7", "--confirm", "-n", "${DEV_PROJECT}")
@@ -53,7 +51,6 @@ pipeline {
                             echo "CREATING ${APP_NAME} in ${openshift.project()}"
                             echo "##########################################################"
 
-                            //  using templates
                             openshift.newApp("--name=${APP_NAME}", "https://raw.githubusercontent.com/jstrickl-redhat/openshift-tasks/master/app-template.yaml", "-n", "${DEV_PROJECT}")
                             openshift.set("triggers", "dc", "tasks", "--remove-all")
                             openshift.set("triggers", "dc", "-l", "app=tasks", "--containers=tasks", "--from-image=tasks:latest", "--manual")

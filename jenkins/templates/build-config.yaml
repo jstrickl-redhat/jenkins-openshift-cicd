@@ -1,0 +1,44 @@
+kind: BuildConfig
+apiVersion: build.openshift.io/v1
+metadata:
+  name: java-pipeline
+  namespace: cicd
+  labels:
+    app: cicd-pipeline
+    name: cicd-pipeline
+  annotations:
+    pipeline.alpha.openshift.io/uses: '[{"name": "jenkins", "namespace": "", "kind": "DeploymentConfig"}]'
+spec:
+  nodeSelector: {}
+  output: {}
+  resources: {}
+  successfulBuildsHistoryLimit: 5
+  failedBuildsHistoryLimit: 5
+  strategy:
+    type: JenkinsPipeline
+    jenkinsPipelineStrategy:
+      jenkinsfilePath: pipelines/java/Jenkinsfile
+      env:
+        - name: DEV_PROJECT
+          value: dev
+        - name: STAGE_PROJECT
+          value: stage
+        - name: PROD_PROJECT
+          value: prod
+        - name: APP_NAME
+          value: tasks
+        - name: APP_REPO
+          value: 'https://github.com/jstrickl-redhat/openshift-tasks.git'
+        - name: APP_BRANCH
+          value: master
+  postCommit: {}
+  source:
+    type: Git
+    git:
+      uri: '${change_me}'
+      ref: master
+  triggers:
+    - type: GitHub
+      github:
+        secret: ${change_me}
+  runPolicy: Serial
