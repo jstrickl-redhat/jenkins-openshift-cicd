@@ -1,12 +1,11 @@
 = Jenkins / Openshift / CICD 
 
-== Overview
+= Overview
 
-This is a starter pipeline for creating Jenkins Pipelines with Openshift, Openshift Client Plugin, and Jenkinsfiles.
+This is a starter for creating Jenkins Pipelines with Openshift, the Openshift Client Plugin, and Jenkinsfiles.
 
-Log in to your Openshift Cluster and run the following commands to prepare the projects
-
-== Setup Projects
+= Setup Projects
+=== Create Projects
 [source, bash]
 ----
 oc new-project dev --display-name="dev"
@@ -23,20 +22,26 @@ oc policy add-role-to-group system:image-puller system:serviceaccounts:prod --na
 oc policy add-role-to-group system:image-puller system:serviceaccounts:prod --namespace=stage
 ----
 
-== Jenkins
+= Jenkins
+=== Create Jenkins in cicd namespace
 [source, bash]
 ----
 oc new-app cicd jenkins-persistent
 oc set resources dc/jenkins --limits=cpu=2,memory=2Gi --requests=cpu=100m,memory=512Mi
 oc label dc jenkins app=jenkins --overwrite
 oc apply -f https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/jenkins/config/worker-config-map.yaml
-oc apply -f https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/jenkins/templates/build-config.yaml
+----
 
+=== Create Pipeline Build Config
+[source, bash]
+----
+oc apply -f https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/jenkins/templates/build-config.yaml
 ----
 
 === Openshift Sync Plugin
 * Log in to your Jenkins instance running in the "cicd" namespace
-* Manage Jenkins -> Configure System -> OpenShift Jenkins Sync -> Add your projects to the Namespaces field (separate with empty space)
+* Manage Jenkins -> Configure System -> OpenShift Jenkins Sync 
+* Add your projects to the Namespaces field (separate with empty space)
 
 === Jenkins Policy Updates
 [source, bash]
@@ -50,7 +55,7 @@ oc policy add-role-to-user edit system:serviceaccounts:cicd:jenkins -n stage
 oc policy add-role-to-user edit system:serviceaccounts:cicd:jenkins -n prod
 ----
 
-== Sonarqube (optional)
+= Sonarqube (optional)
 [source, bash]
 ----
 oc new-app -f https://raw.githubusercontent.com/siamaksade/sonarqube/master/sonarqube-persistent-template.yml --param=SONARQUBE_MEMORY_LIMIT=2Gi
@@ -60,7 +65,7 @@ oc label dc sonarqube "app.kubernetes.io/part-of"="sonarqube" --overwrite
 oc label dc sonardb "app.kubernetes.io/part-of"="sonarqube" --overwrite
 ----
 
-== Nexus (optional)
+= Nexus (optional)
 [source, bash]
 ----
 oc new-app -f https://raw.githubusercontent.com/OpenShiftDemos/nexus/master/nexus3-persistent-template.yaml --param=NEXUS_VERSION=3.13.0 --param=MAX_MEMORY=2Gi
