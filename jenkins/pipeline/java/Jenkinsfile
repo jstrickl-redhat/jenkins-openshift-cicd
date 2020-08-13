@@ -82,7 +82,7 @@ pipeline {
                             
                             
                             if(!openshift.selector("template", [template: "openshift-tasks"]).exists()){
-                                openshift.create(openshift.process("https://raw.githubusercontent.com/jstrickl-redhat/cicd-demo/master/apps/java/openshift-tasks-deploy.yaml", "-p", "APPLICATION_NAME=${APP_NAME}", "-p", "TAG=prod", "-p", "NAMESPACE=prod"))
+                                openshift.create(openshift.process("https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/openshift/templates/deploy/tasks-deploy.yaml", "-p", "APPLICATION_NAME=${APP_NAME}", "-p", "TAG=prod", "-p", "NAMESPACE=prod"))
                             }
                           
                             openshift.set("triggers", "dc", "-l", "app=tasks", "--containers=tasks", "--from-image=tasks:prod", "--manual")
