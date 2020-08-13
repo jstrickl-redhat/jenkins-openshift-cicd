@@ -4,7 +4,6 @@
 
 This is a starter for creating Jenkins Pipelines with Openshift, the Openshift Client Plugin, and Jenkinsfiles.
 
-= Setup Projects
 === Create Projects
 [source, bash]
 ----
