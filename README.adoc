@@ -4,7 +4,7 @@
 
 This is a starter pipeline for creating Jenkins Pipelines with Openshift, Openshift Client Plugin, and Jenkinsfiles.
 
-Log in to your Openshift Cluster and run the following commands to prepare the CI/CD environment
+Log in to your Openshift Cluster and run the following commands to prepare the projects
 
 == Setup Projects in Openshift
 [source, bash]
