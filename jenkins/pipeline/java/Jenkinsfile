@@ -64,7 +64,7 @@ pipeline {
                             echo "##########################################################"
                             
                             for(obj in osObjs) {
-                                if(openshift.selector(obj, "${APP_NAME}").exists()) { openshift.selector("obj", "${APP_NAME}").delete() }
+                                if(openshift.selector(obj, "${APP_NAME}").exists()) { openshift.selector("${obj}", "${APP_NAME}").delete() }
                             }
                             
                             if(!openshift.selector("template", [template: "openshift-tasks"]).exists()){
