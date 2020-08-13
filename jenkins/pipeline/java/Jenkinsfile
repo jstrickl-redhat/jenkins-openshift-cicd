@@ -25,8 +25,8 @@ pipeline {
                                         echo "##########################################################"
                                         echo "PROJECT: ${project} ALREADY EXISTS - CLEARING RESOURCES"
                                         echo "##########################################################"
-                                        openshift.selector("all", ["app": "tasks"]).delete()
-                                        openshift.selector("all", ["application": "tasks"]).delete()
+                                        openshift.selector("all", ["app": "${APP_NAME}"]).delete()
+                                        openshift.selector("all", ["application": "${APP_NAME}"]).delete()
                                     }
                                 }
                             }
@@ -40,11 +40,12 @@ pipeline {
                 script {
                     openshift.withCluster(){
                         def wildfly = openshift.selector("is", "wildfly")
+                        def osObjs = ["dc", "svc", "is"]
+                        def noBuildProjects = ["${STAGE_PROJECT}","${PROD_PROJECT}"]
                         
                         if(!wildfly.exists()) {
                             wildfly = openshift.raw("import-image", "wildfly", "--from=openshift/wildfly-120-centos7", "--confirm", "-n", "${DEV_PROJECT}")
                         }
-                        
                         
                         openshift.withProject("${DEV_PROJECT}"){
                             echo "##########################################################"
@@ -52,41 +53,59 @@ pipeline {
                             echo "##########################################################"
 
                             openshift.newApp("--name=${APP_NAME}", "https://raw.githubusercontent.com/jstrickl-redhat/openshift-tasks/master/app-template.yaml", "-n", "${DEV_PROJECT}")
-                            openshift.set("triggers", "dc", "tasks", "--remove-all")
-                            openshift.set("triggers", "dc", "-l", "app=tasks", "--containers=tasks", "--from-image=tasks:latest", "--manual")
+                            openshift.set("triggers", "dc", "${APP_NAME}", "--remove-all")
+                            openshift.set("triggers", "dc", "-l", "app=${APP_NAME}", "--containers=${APP_NAME}", "--from-image=${APP_NAME}:latest", "--manual")
                         }
-                        openshift.withProject("${STAGE_PROJECT}"){
+
+                        // Update not tested
+                        for(project in noBuildProjects){
                             echo "##########################################################"
                             echo "CREATING ${APP_NAME} in ${openshift.project()}"
                             echo "##########################################################"
                             
-                            if(openshift.selector("dc", "tasks").exists()) { openshift.selector("dc", "tasks").delete() }
-                            if(openshift.selector("svc", "tasks").exists()) { openshift.selector("svc", "tasks").delete() }
-                            if(openshift.selector("is", "tasks").exists()) { openshift.selector("is", "tasks").delete() }
-                            
+                            for(obj in osObjs) {
+                                if(openshift.selector(obj, "${APP_NAME}").exists()) { openshift.selector("obj", "${APP_NAME}").delete() }
+                            }
                             
                             if(!openshift.selector("template", [template: "openshift-tasks"]).exists()){
-                                openshift.create(openshift.process("https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/openshift/templates/deploy/tasks-deploy.yaml", "-p", "APPLICATION_NAME=${APP_NAME}", "-p", "TAG=stage", "-p", "NAMESPACE=stage"))
+                                openshift.create(openshift.process("https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/openshift/templates/deploy/tasks-deploy.yaml", "-p", "APPLICATION_NAME=${APP_NAME}", "-p", "TAG=${project}", "-p", "NAMESPACE=${project}"))
                             }
                           
-                            openshift.set("triggers", "dc", "-l", "app=tasks", "--containers=tasks", "--from-image=tasks:stage", "--manual")
+                            openshift.set("triggers", "dc", "-l", "app=${APP_NAME}", "--containers=${APP_NAME}", "--from-image=${APP_NAME}:stage", "--manual")
                         }
-                        openshift.withProject("${PROD_PROJECT}"){
-                            echo "##########################################################"
-                            echo "CREATING ${APP_NAME} in ${openshift.project()}"
-                            echo "##########################################################"
+
+                        // Use this if untested update does not work
+                        // openshift.withProject("${STAGE_PROJECT}"){
+                        //     echo "##########################################################"
+                        //     echo "CREATING ${APP_NAME} in ${openshift.project()}"
+                        //     echo "##########################################################"
                             
-                            if(openshift.selector("dc", "tasks").exists()) { openshift.selector("dc", "tasks").delete() }
-                            if(openshift.selector("svc", "tasks").exists()) { openshift.selector("svc", "tasks").delete() }
-                            if(openshift.selector("is", "tasks").exists()) { openshift.selector("is", "tasks").delete() }
+                        //     if(openshift.selector("dc", "tasks").exists()) { openshift.selector("dc", "tasks").delete() }
+                        //     if(openshift.selector("svc", "tasks").exists()) { openshift.selector("svc", "tasks").delete() }
+                        //     if(openshift.selector("is", "tasks").exists()) { openshift.selector("is", "tasks").delete() }
                             
                             
-                            if(!openshift.selector("template", [template: "openshift-tasks"]).exists()){
-                                openshift.create(openshift.process("https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/openshift/templates/deploy/tasks-deploy.yaml", "-p", "APPLICATION_NAME=${APP_NAME}", "-p", "TAG=prod", "-p", "NAMESPACE=prod"))
-                            }
+                        //     if(!openshift.selector("template", [template: "openshift-tasks"]).exists()){
+                        //         openshift.create(openshift.process("https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/openshift/templates/deploy/tasks-deploy.yaml", "-p", "APPLICATION_NAME=${APP_NAME}", "-p", "TAG=stage", "-p", "NAMESPACE=stage"))
+                        //     }
                           
-                            openshift.set("triggers", "dc", "-l", "app=tasks", "--containers=tasks", "--from-image=tasks:prod", "--manual")
-                        }
+                        //     openshift.set("triggers", "dc", "-l", "app=tasks", "--containers=tasks", "--from-image=tasks:stage", "--manual")
+                        // }
+                        // openshift.withProject("${PROD_PROJECT}"){
+                        //     echo "##########################################################"
+                        //     echo "CREATING ${APP_NAME} in ${openshift.project()}"
+                        //     echo "##########################################################"
+                            
+                        //     if(openshift.selector("dc", "tasks").exists()) { openshift.selector("dc", "tasks").delete() }
+                        //     if(openshift.selector("svc", "tasks").exists()) { openshift.selector("svc", "tasks").delete() }
+                        //     if(openshift.selector("is", "tasks").exists()) { openshift.selector("is", "tasks").delete() }
+                            
+                            
+                        //     if(!openshift.selector("template", [template: "openshift-tasks"]).exists()){
+                        //         openshift.create(openshift.process("https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/openshift/templates/deploy/tasks-deploy.yaml", "-p", "APPLICATION_NAME=${APP_NAME}", "-p", "TAG=prod", "-p", "NAMESPACE=prod"))
+                        //     }
+                        //     openshift.set("triggers", "dc", "-l", "app=tasks", "--containers=tasks", "--from-image=tasks:prod", "--manual")
+                        // }
                     }
                 }
             }
@@ -103,29 +122,31 @@ pipeline {
                 step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*.xml'])
             }
         }
-        stage('Code Analysis') {
-            steps {
-                script {
-                    openshift.withCluster() {
-                        openshift.withProject(env.DEV_PROJECT) {
-                            sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube:9000 -DskipTests=true"
-                        }
-                    }
-                }
-            }
-        }
-        stage('Archive App') {
-            steps {
-                sh "${mvnCmd} deploy -DskipTests=true -P nexus"
-            }
-        }
+        // Will require additional configuration of sonar/qube && sonar/nexus to use
+        //  
+        // stage('Code Analysis') {
+        //     steps {
+        //         script {
+        //             openshift.withCluster() {
+        //                 openshift.withProject(env.DEV_PROJECT) {
+        //                     sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube:9000 -DskipTests=true"
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+        // stage('Archive App') {
+        //     steps {
+        //         sh "${mvnCmd} deploy -DskipTests=true -P nexus"
+        //     }
+        // }
         stage('Build Image') {
             steps {
-                sh "cp target/openshift-tasks.war target/ROOT.war"
+                sh "cp target/openshift-${APP_NAME}.war target/ROOT.war"
                 script {
                     openshift.withCluster() {
                         openshift.withProject(env.DEV_PROJECT) {
-                            openshift.selector("bc", "tasks").startBuild("--from-file=target/ROOT.war", "--wait=true")
+                            openshift.selector("bc", "${APP_NAME}").startBuild("--from-file=target/ROOT.war", "--wait=true")
                         }
                     }
                 }
@@ -137,7 +158,7 @@ pipeline {
                     openshift.withCluster() {
                         openshift.withProject(env.DEV_PROJECT) {
                             openshift.selector("dc", "${APP_NAME}").rollout().latest();
-                            openshift.tag("dev/tasks:latest", "stage/tasks:stage")
+                            openshift.tag("dev/${APP_NAME}:latest", "stage/${APP_NAME}:stage")
                         }
                     }
                 }
@@ -155,11 +176,11 @@ pipeline {
                 script {
                     openshift.withCluster() {
                         openshift.withProject(env.STAGE_PROJECT) {
-                            openshift.selector("dc", "tasks").rollout().latest()
-                            if(!openshift.selector("route", "tasks").exists()){
-                                openshift.selector("svc", "tasks").expose()
+                            openshift.selector("dc", "${APP_NAME}").rollout().latest()
+                            if(!openshift.selector("route","${APP_NAME}").exists()){
+                                openshift.selector("svc", "${APP_NAME}").expose()
                             }
-                            openshift.tag("stage/tasks:stage", "prod/tasks:prod")
+                            openshift.tag("stage/${APP_NAME}:stage", "prod/${APP_NAME}:prod")
                         }
                     }
                 }
@@ -177,9 +198,9 @@ pipeline {
                 script {
                     openshift.withCluster() {
                         openshift.withProject(env.PROD_PROJECT) {
-                            openshift.selector("dc", "tasks").rollout().latest()
-                            if(!openshift.selector("route", "tasks").exists()){
-                                openshift.selector("svc", "tasks").expose()
+                            openshift.selector("dc", "${APP_NAME}").rollout().latest()
+                            if(!openshift.selector("route", "${APP_NAME}").exists()){
+                                openshift.selector("svc", "${APP_NAME}").expose()
                             }
                         }
                     }
