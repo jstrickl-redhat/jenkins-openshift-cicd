@@ -54,6 +54,8 @@ oc policy add-role-to-group system:image-puller system:serviceaccounts:prod --na
 oc new-app -f https://raw.githubusercontent.com/siamaksade/sonarqube/master/sonarqube-persistent-template.yml --param=SONARQUBE_MEMORY_LIMIT=2Gi
 oc set resources dc/sonardb --limits=cpu=200m,memory=512Mi --requests=cpu=50m,memory=128Mi
 oc set resources dc/sonarqube --limits=cpu=1,memory=2Gi --requests=cpu=50m,memory=128Mi
+oc label dc sonarqube "app.kubernetes.io/part-of"="sonarqube" --overwrite
+oc label dc sonardb "app.kubernetes.io/part-of"="sonarqube" --overwrite
 ----
 
 == Nexus (optional)
@@ -61,4 +63,5 @@ oc set resources dc/sonarqube --limits=cpu=1,memory=2Gi --requests=cpu=50m,memor
 ----
 oc new-app -f https://raw.githubusercontent.com/OpenShiftDemos/nexus/master/nexus3-persistent-template.yaml --param=NEXUS_VERSION=3.13.0 --param=MAX_MEMORY=2Gi
 oc set resources dc/nexus --requests=cpu=200m --limits=cpu=2
+oc label dc nexus "app.kubernetes.io/part-of"="nexus" --overwrite
 ----
