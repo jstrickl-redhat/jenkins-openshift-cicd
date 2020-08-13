@@ -48,7 +48,7 @@ oc policy add-role-to-group system:image-puller system:serviceaccounts:prod --na
 oc policy add-role-to-group system:image-puller system:serviceaccounts:prod --namespace=stage
 ----
 
-# Sonarqube (optional)
+== Sonarqube (optional)
 [source, bash]
 ----
 oc new-app -f https://raw.githubusercontent.com/siamaksade/sonarqube/master/sonarqube-persistent-template.yml --param=SONARQUBE_MEMORY_LIMIT=2Gi
@@ -56,6 +56,6 @@ oc set resources dc/sonardb --limits=cpu=200m,memory=512Mi --requests=cpu=50m,me
 oc set resources dc/sonarqube --limits=cpu=1,memory=2Gi --requests=cpu=50m,memory=128Mi
 ----
 
-# Nexus (optional)
+== Nexus (optional)
 oc new-app -f https://raw.githubusercontent.com/OpenShiftDemos/nexus/master/nexus3-persistent-template.yaml --param=NEXUS_VERSION=3.13.0 --param=MAX_MEMORY=2Gi
 oc set resources dc/nexus --requests=cpu=200m --limits=cpu=2
