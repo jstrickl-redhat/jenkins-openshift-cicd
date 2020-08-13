@@ -1,3 +1,61 @@
-# jenkins-openshift-cicd
-Openshift Jenkins - OC Client Plugin - Jenkinsfile
+= Jenkins / Openshift / CICD 
 
+== Overview
+
+This is a starter pipeline for creating Jenkins Pipelines with Openshift, Openshift Client Plugin, and Jenkinsfiles.
+
+Log in to your Openshift Cluster and run the following commands to prepare the CI/CD environment
+
+== Setup Projects in Openshift
+[source, bash]
+----
+oc new-project dev --display-name="dev"
+oc new-project stage --display-name="stage"
+oc new-project prod --display-name="prod"
+oc new-project cicd --display-name="cicd"
+----
+
+== Setup Jenkins in CI/CD Project
+[source, bash]
+----
+oc new-app cicd jenkins-persistent
+oc set resources dc/jenkins --limits=cpu=2,memory=2Gi --requests=cpu=100m,memory=512Mi
+oc apply -f https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/jenkins/config/worker-config-map
+oc label dc jenkins app=jenkins --overwrite
+----
+
+== Configure Jenkins
+* Log in to your Jenkins instance running in the "cicd" namespace
+* Manage Jenkins -> Configure System -> OpenShift Jenkins Sync -> Add your projects to the Namespaces field (separate with empty space)
+
+== Jenkins Policy Updates
+[source, bash]
+----
+oc policy add-role-to-group edit system:serviceaccounts:cicd: -n dev
+oc policy add-role-to-group edit system:serviceaccounts:cicd -n stage
+oc policy add-role-to-group edit system:serviceaccounts:cicd -n prod
+
+oc policy add-role-to-user edit system:serviceaccounts:cicd:jenkins -n dev
+oc policy add-role-to-user edit system:serviceaccounts:cicd:jenkins -n stage
+oc policy add-role-to-user edit system:serviceaccounts:cicd:jenkins -n prod
+----
+
+== Setup Image Pulling for Projects
+[source, bash]
+----
+oc policy add-role-to-group system:image-puller system:serviceaccounts:stage --namespace=dev
+oc policy add-role-to-group system:image-puller system:serviceaccounts:prod --namespace=dev
+oc policy add-role-to-group system:image-puller system:serviceaccounts:prod --namespace=stage
+----
+
+# Setup Sonarqube (Optional)
+[source, bash]
+----
+oc new-app -f https://raw.githubusercontent.com/siamaksade/sonarqube/master/sonarqube-persistent-template.yml --param=SONARQUBE_MEMORY_LIMIT=2Gi
+oc set resources dc/sonardb --limits=cpu=200m,memory=512Mi --requests=cpu=50m,memory=128Mi
+oc set resources dc/sonarqube --limits=cpu=1,memory=2Gi --requests=cpu=50m,memory=128Mi
+----
+
+# Setup Nexus (Optional)
+oc new-app -f https://raw.githubusercontent.com/OpenShiftDemos/nexus/master/nexus3-persistent-template.yaml --param=NEXUS_VERSION=3.13.0 --param=MAX_MEMORY=2Gi
+oc set resources dc/nexus --requests=cpu=200m --limits=cpu=2
