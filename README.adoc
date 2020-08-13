@@ -57,5 +57,8 @@ oc set resources dc/sonarqube --limits=cpu=1,memory=2Gi --requests=cpu=50m,memor
 ----
 
 == Nexus (optional)
+[source, bash]
+----
 oc new-app -f https://raw.githubusercontent.com/OpenShiftDemos/nexus/master/nexus3-persistent-template.yaml --param=NEXUS_VERSION=3.13.0 --param=MAX_MEMORY=2Gi
 oc set resources dc/nexus --requests=cpu=200m --limits=cpu=2
+----
