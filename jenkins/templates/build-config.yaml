@@ -17,7 +17,7 @@ spec:
   strategy:
     type: JenkinsPipeline
     jenkinsPipelineStrategy:
-      jenkinsfilePath: pipelines/java/Jenkinsfile
+      jenkinsfilePath: pipeline/java/Jenkinsfile
       env:
         - name: DEV_PROJECT
           value: dev
