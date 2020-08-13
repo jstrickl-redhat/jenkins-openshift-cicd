@@ -38,12 +38,7 @@ oc apply -f https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-
 oc apply -f https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/jenkins/templates/build-config.yaml
 ----
 
-=== Openshift Sync Plugin
-* Log in to your Jenkins instance running in the "cicd" namespace
-* Manage Jenkins -> Configure System -> OpenShift Jenkins Sync 
-* Add your projects to the Namespaces field (separate with empty space)
-
-=== Jenkins Policy Updates
+=== Policy Updates
 [source, bash]
 ----
 oc policy add-role-to-group edit system:serviceaccounts:cicd: -n dev
@@ -54,6 +49,11 @@ oc policy add-role-to-user edit system:serviceaccounts:cicd:jenkins -n dev
 oc policy add-role-to-user edit system:serviceaccounts:cicd:jenkins -n stage
 oc policy add-role-to-user edit system:serviceaccounts:cicd:jenkins -n prod
 ----
+
+=== Openshift Sync Plugin
+* Log in to your Jenkins instance running in the "cicd" namespace
+* Manage Jenkins -> Configure System -> OpenShift Jenkins Sync 
+* Add your projects to the Namespaces field (separate with empty space)
 
 = Sonarqube (optional)
 [source, bash]
