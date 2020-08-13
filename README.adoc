@@ -1,4 +1,4 @@
-= Jenkins / Openshift / CICD 
+= Jenkins / Openshift / Openshift Client Plugin 
 
 = Overview
 
