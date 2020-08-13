@@ -4,6 +4,13 @@
 
 This is a starter for creating Jenkins Pipelines with Openshift, the Openshift Client Plugin, and Jenkinsfiles.
 
+If a proxy,you will need to add http_proxy settings to:
+
+* the kuberenetes agent
+* deploy configs for each of the pods
+* nexus and its internal proxy configuration
+* sonarqube (if used)
+
 === Create Projects
 [source, bash]
 ----
@@ -25,7 +32,7 @@ oc policy add-role-to-group system:image-puller system:serviceaccounts:prod --na
 === Create Jenkins in cicd namespace
 [source, bash]
 ----
-oc new-app cicd jenkins-persistent
+oc new-app jenkins-persistent
 oc set resources dc/jenkins --limits=cpu=2,memory=2Gi --requests=cpu=100m,memory=512Mi
 oc label dc jenkins app=jenkins --overwrite
 oc apply -f https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/jenkins/config/worker-config-map.yaml
@@ -49,6 +56,14 @@ oc policy add-role-to-user edit system:serviceaccounts:cicd:jenkins -n stage
 oc policy add-role-to-user edit system:serviceaccounts:cicd:jenkins -n prod
 ----
 
+= Nexus
+[source, bash]
+----
+oc new-app -f https://raw.githubusercontent.com/OpenShiftDemos/nexus/master/nexus3-persistent-template.yaml --param=NEXUS_VERSION=3.13.0 --param=MAX_MEMORY=2Gi
+oc set resources dc/nexus --requests=cpu=200m --limits=cpu=2
+oc label dc nexus "app.kubernetes.io/part-of"="nexus" --overwrite
+----
+
 === Openshift Sync Plugin
 * Log in to your Jenkins instance running in the "cicd" namespace
 * Manage Jenkins -> Configure System -> OpenShift Jenkins Sync 
@@ -62,12 +77,4 @@ oc set resources dc/sonardb --limits=cpu=200m,memory=512Mi --requests=cpu=50m,me
 oc set resources dc/sonarqube --limits=cpu=1,memory=2Gi --requests=cpu=50m,memory=128Mi
 oc label dc sonarqube "app.kubernetes.io/part-of"="sonarqube" --overwrite
 oc label dc sonardb "app.kubernetes.io/part-of"="sonarqube" --overwrite
-----
-
-= Nexus (optional)
-[source, bash]
-----
-oc new-app -f https://raw.githubusercontent.com/OpenShiftDemos/nexus/master/nexus3-persistent-template.yaml --param=NEXUS_VERSION=3.13.0 --param=MAX_MEMORY=2Gi
-oc set resources dc/nexus --requests=cpu=200m --limits=cpu=2
-oc label dc nexus "app.kubernetes.io/part-of"="nexus" --overwrite
 ----
