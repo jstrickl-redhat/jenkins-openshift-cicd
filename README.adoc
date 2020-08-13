@@ -47,7 +47,7 @@ oc apply -f https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-
 === Policy Updates
 [source, bash]
 ----
-oc policy add-role-to-group edit system:serviceaccounts:cicd: -n dev
+oc policy add-role-to-group edit system:serviceaccounts:cicd -n dev
 oc policy add-role-to-group edit system:serviceaccounts:cicd -n stage
 oc policy add-role-to-group edit system:serviceaccounts:cicd -n prod
 
