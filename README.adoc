@@ -32,7 +32,7 @@ oc label dc jenkins app=jenkins --overwrite
 oc apply -f https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/jenkins/config/worker-config-map.yaml
 ----
 
-=== Create Pipeline Build Config
+=== Pipeline Build Config
 [source, bash]
 ----
 oc apply -f https://raw.githubusercontent.com/jstrickl-redhat/jenkins-openshift-cicd/master/jenkins/templates/build-config.yaml
