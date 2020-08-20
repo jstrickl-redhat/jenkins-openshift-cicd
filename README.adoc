@@ -4,7 +4,7 @@
 
 This is a starter for creating Jenkins Pipelines with Openshift, the Openshift Client Plugin, and Jenkinsfiles.
 
-If behind a proxy,you will need to add http_proxy settings to:
+If behind a proxy,you will need to add http_proxy, https_proxy, HTTP_PROXY and HTTPS_PROXY settings to:
 
 * the kuberenetes agent
 * deploy configs for each of the pods
